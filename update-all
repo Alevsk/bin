@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+
+# Function to check if a command is available
+command_exists() {
+    type "$1" >/dev/null 2>&1
+}
+
+# Function to check if script is running as root
+is_root() {
+    [ "$(id -u)" -eq 0 ]
+}
+
+# Parse command line arguments
+update_os=false
+update_python=false
+update_npm=false
+update_go=false
+
+if [[ "$#" -eq 0 ]]; then
+    update_os=true
+    update_python=true
+    update_npm=true
+    update_go=true
+else
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+            --all)
+                update_os=true
+                update_python=true
+                update_npm=true
+                update_go=true
+                shift
+                ;;
+            --os)
+                update_os=true
+                shift
+                ;;
+            --python)
+                update_python=true
+                shift
+                ;;
+            --npm)
+                update_npm=true
+                shift
+                ;;
+            --go)
+                update_go=true
+                shift
+                ;;
+            *)
+                echo "ERROR: Invalid argument: $1"
+                exit 1
+                ;;
+        esac
+    done
+fi
+
+# Verify script is not running as root
+if is_root; then
+    echo "ERROR: This script should not be run as root."
+    exit 1
+fi
+
+# Upgrade OS packages
+if [ "$update_os" == "true" ]; then
+    sudo apt-get update
+    sudo apt-get upgrade -y
+fi
+
+# Upgrade Python packages
+if [ "$update_python" == "true" ] && command_exists "python"; then
+    python -m pip install --upgrade pip
+    pip list -o | cut -f1 -d' ' | tr " " "\n" | awk '{if(NR>=3)print}' | cut -d' ' -f1 | xargs -n1 pip install -U
+fi
+
+# Upgrade NodeJS packages
+if [ "$update_npm" == "true" ] && command_exists "npm"; then
+    npm install npm@latest -g
+    npm update -g
+fi
+
+# Upgrade Go packages
+if [ "$update_go" == "true" ] && command_exists "go-global-update"; then
+    go-global-update
+fi
